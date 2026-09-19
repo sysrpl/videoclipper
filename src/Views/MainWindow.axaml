@@ -1,0 +1,343 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:h="using:videoclipper.Helpers"
+        xmlns:c="using:videoclipper.Controls"
+        x:Class="videoclipper.Views.MainWindow"
+        Title="Video Clipper"
+        Width="1000" Height="960"
+        MinWidth="820" MinHeight="400"
+        WindowStartupLocation="CenterScreen">
+
+    <Window.Styles>
+        <!-- Form grids: 8px between cells. Controls in the last row set Margin="0" so sections end flush. -->
+        <Style Selector="Grid.form > :is(Control)">
+            <Setter Property="Margin" Value="0,0,8,8" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="NumericUpDown">
+            <Setter Property="Width" Value="120" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+        </Style>
+        <Style Selector="NumericUpDown.pixels">
+            <Setter Property="Width" Value="105" />
+        </Style>
+        <Style Selector="ComboBox">
+            <Setter Property="MinWidth" Value="170" />
+        </Style>
+        <!-- The preview shows an accent border while it has the keyboard, for Left / Right frame steps. -->
+        <Style Selector="Border#PreviewArea">
+            <Setter Property="BorderBrush" Value="Black" />
+        </Style>
+        <Style Selector="Border#PreviewArea:focus-within">
+            <Setter Property="BorderBrush" Value="{DynamicResource MintAccentBrush}" />
+        </Style>
+        <!-- The preview's resize handle: a short bar that lights up under the pointer. -->
+        <Style Selector="Thumb#PreviewSplitter /template/ Border#Grip">
+            <Setter Property="Background" Value="{DynamicResource MintFrameBrush}" />
+        </Style>
+        <Style Selector="Thumb#PreviewSplitter:pointerover /template/ Border#Grip">
+            <Setter Property="Background" Value="{DynamicResource MintAccentBrush}" />
+        </Style>
+        <!-- Icon-only buttons: flat and 24x24, like toolbar buttons. -->
+        <Style Selector="Button.icon">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Width" Value="24" />
+            <Setter Property="Height" Value="24" />
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="Padding" Value="0" />
+        </Style>
+        <Style Selector="Button.icon TextBlock.icon">
+            <Setter Property="FontSize" Value="18" />
+        </Style>
+        <Style Selector="TextBox#LogBox">
+            <Setter Property="FontFamily" Value="Cascadia Mono, Consolas, Menlo, DejaVu Sans Mono, monospace" />
+            <Setter Property="FontSize" Value="12" />
+        </Style>
+    </Window.Styles>
+
+    <!-- Scrolls when the window is too short for everything. -->
+    <ScrollViewer x:Name="PageScroller" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <!-- 12px on the right leaves room for the scroll bar, which is drawn over the content. -->
+        <Grid x:Name="ContentGrid" Margin="8,8,12,8">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <!-- The preview: sized by the splitter below it (see MainWindow.Preview.cs). -->
+                <RowDefinition Height="360" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- File -->
+            <DockPanel Grid.Row="0" Margin="0,0,0,8">
+                <Button DockPanel.Dock="Left" Click="Open_Click"
+                        h:Tip.Title="Open video (Ctrl+O)"
+                        h:Tip.Text="Choose the recording to trim: MKV, MP4, MOV, AVI, WebM or M4V.">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock Classes="icon" Text="&#xF0770;" />
+                        <TextBlock Classes="label" Text="Open video…" />
+                    </StackPanel>
+                </Button>
+                <!-- Help: a small icon button at the far right. -->
+                <Button Classes="icon" DockPanel.Dock="Right" Click="About_Click"
+                        h:Tip.Title="About Video Clipper" h:Tip.Text="Version, what the program does, and build information.">
+                    <TextBlock Classes="icon" Text="&#xF02FD;" />
+                </Button>
+                <TextBlock x:Name="FileText" Text="No video selected" Margin="8,0,0,0"
+                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+            </DockPanel>
+
+            <!-- Preview: frames decoded by ffmpeg, with the crop rectangle drawn over them. -->
+            <Border x:Name="PreviewArea" Grid.Row="1" Background="Black" BorderThickness="1" Focusable="True"
+                    h:Tip.Title="Preview" h:Tip.Text="Click here, then use Left / Right to move one frame.">
+                <Grid>
+                    <TextBlock x:Name="PreviewMessage" Classes="dim" Text="Open a video to preview it"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center"
+                               TextWrapping="Wrap" Margin="16" />
+                    <Image x:Name="PreviewImage" Stretch="Uniform" />
+                    <c:CropOverlay x:Name="CropOverlay" IsVisible="False"
+                                   h:Tip.Title="Crop rectangle"
+                                   h:Tip.Text="Drag to select the area to keep. Drag an edge or corner to resize it, or drag the center handle to move it without resizing." />
+                </Grid>
+            </Border>
+
+            <!-- Drag to make the preview taller or shorter. -->
+            <Thumb x:Name="PreviewSplitter" Grid.Row="2" Height="8" Cursor="SizeNorthSouth"
+                   h:Tip.Title="Resize preview" h:Tip.Text="Drag up or down to make the preview smaller or larger.">
+                <Thumb.Template>
+                    <ControlTemplate>
+                        <Border Background="Transparent">
+                            <Border Name="Grip" Width="48" Height="3" CornerRadius="1.5"
+                                    HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                    </ControlTemplate>
+                </Thumb.Template>
+            </Thumb>
+
+            <c:ZoomTimeline x:Name="Timeline" Grid.Row="3"
+                            h:Tip.Title="Timeline"
+                            h:Tip.Text="Click or drag the timeline to seek. Drag either end of the lower blue bar to zoom; drag its center to scroll." />
+
+            <!-- Playback -->
+            <DockPanel Grid.Row="4" Margin="0,8,0,8">
+                <Button x:Name="PlayButton" DockPanel.Dock="Left" IsEnabled="False" Click="Play_Click"
+                        h:Tip.Title="Play / Pause" h:Tip.Text="Play the video from the current position, without sound. Playback stops at the end point.">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock x:Name="PlayIcon" Classes="icon" Text="&#xF040A;" />
+                        <TextBlock x:Name="PlayLabel" Classes="label" Text="Play" />
+                    </StackPanel>
+                </Button>
+                <TextBlock x:Name="TimeText" DockPanel.Dock="Right" Text="00:00.00 / 00:00.00" VerticalAlignment="Center" />
+                <TextBlock Classes="dim" Text="Click preview, then use ← / → to move one frame"
+                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </DockPanel>
+
+            <TabControl Grid.Row="5">
+                <TabItem Header="Main">
+                    <!-- Sections are 16px apart, twice the space inside them, as they have no boxes. -->
+                    <StackPanel Spacing="16">
+                        <!-- Trim -->
+                        <StackPanel>
+                            <TextBlock Classes="groupTitle" Text="Trim" />
+                            <Grid Classes="form" ColumnDefinitions="Auto,Auto,Auto,Auto,*" RowDefinitions="Auto,Auto,Auto">
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Start (seconds)" />
+                                <NumericUpDown x:Name="StartSpin" Grid.Row="0" Grid.Column="1"
+                                               Minimum="0" Maximum="1" Increment="0.1" FormatString="0.00" Value="0" />
+                                <Button Grid.Row="0" Grid.Column="2" Click="SetStartHere_Click"
+                                        h:Tip.Title="Set start" h:Tip.Text="Start the clip at the frame shown in the preview.">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <TextBlock Classes="icon" Text="&#xF1102;" />
+                                        <TextBlock Classes="label" Text="Set to current position" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Grid.Row="0" Grid.Column="3" Click="JumpToStart_Click"
+                                        h:Tip.Title="Jump to start" h:Tip.Text="Show the clip's first frame.">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <TextBlock Classes="icon" Text="&#xF04AE;" />
+                                        <TextBlock Classes="label" Text="Jump to start" />
+                                    </StackPanel>
+                                </Button>
+
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="End (seconds)" />
+                                <NumericUpDown x:Name="EndSpin" Grid.Row="1" Grid.Column="1"
+                                               Minimum="0" Maximum="1" Increment="0.1" FormatString="0.00" Value="0" />
+                                <Button Grid.Row="1" Grid.Column="2" Click="SetEndHere_Click"
+                                        h:Tip.Title="Set end" h:Tip.Text="End the clip at the frame shown in the preview.">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <TextBlock Classes="icon" Text="&#xF1102;" />
+                                        <TextBlock Classes="label" Text="Set to current position" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Grid.Row="1" Grid.Column="3" Click="JumpToEnd_Click"
+                                        h:Tip.Title="Jump to end" h:Tip.Text="Show the clip's last frame.">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <TextBlock Classes="icon" Text="&#xF04AD;" />
+                                        <TextBlock Classes="label" Text="Jump to end" />
+                                    </StackPanel>
+                                </Button>
+
+                                <TextBlock x:Name="ClipText" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="5"
+                                           Text="Selected duration: 00:00.00" Margin="0" />
+                            </Grid>
+                        </StackPanel>
+
+                        <!-- Output -->
+                        <StackPanel>
+                            <TextBlock x:Name="OutputTitle" Classes="groupTitle" Text="Web MP4 output" />
+                            <Grid Classes="form" ColumnDefinitions="Auto,Auto,Auto,*,Auto" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto">
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Save as" />
+                                <TextBox x:Name="OutputBox" Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="3" />
+                                <Button Grid.Row="0" Grid.Column="4" Click="Browse_Click" Margin="0,0,0,8"
+                                        h:Tip.Title="Browse" h:Tip.Text="Choose where to save the new video.">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <TextBlock Classes="icon" Text="&#xF0256;" />
+                                        <TextBlock Classes="label" Text="Browse…" />
+                                    </StackPanel>
+                                </Button>
+
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Format" />
+                                <ComboBox x:Name="FormatCombo" Grid.Row="1" Grid.Column="1" SelectedIndex="0">
+                                    <ComboBoxItem Tag="mp4" Content="MP4 — H.264 + AAC" />
+                                    <ComboBoxItem Tag="ogv" Content="OGV — Theora + Vorbis (Godot)" />
+                                </ComboBox>
+                                <TextBlock x:Name="FormatNote" Grid.Row="1" Grid.Column="2" Grid.ColumnSpan="3" Classes="dim"
+                                           Text="Godot plays Theora video with Vorbis audio only" IsVisible="False" />
+
+                                <!-- One row holds both quality controls; ApplyFormat shows the one for the selected format. -->
+                                <TextBlock x:Name="SizeLabel" Grid.Row="2" Grid.Column="0" Text="Maximum size" />
+                                <Panel Grid.Row="2" Grid.Column="1">
+                                    <NumericUpDown x:Name="SizeSpin" Minimum="0.1" Maximum="1000" Increment="0.1"
+                                                   FormatString="0.0" Value="75" />
+                                    <NumericUpDown x:Name="QualitySpin" Minimum="1" Maximum="9" Increment="1"
+                                                   FormatString="0" Value="7" IsVisible="False" />
+                                </Panel>
+                                <StackPanel Grid.Row="2" Grid.Column="2" Grid.ColumnSpan="3" Orientation="Horizontal" Spacing="8">
+                                    <Button x:Name="SuggestSizeButton" IsEnabled="False" Click="SuggestSize_Click"
+                                            h:Tip.Title="Suggest a size"
+                                            h:Tip.Text="Set the maximum size to what this clip needs for good quality, from its duration, frame rate and output size (after cropping or the maximum width), plus the audio.">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <TextBlock Classes="icon" Text="&#xF0068;" />
+                                            <TextBlock Classes="label" Text="Suggest" />
+                                        </StackPanel>
+                                    </Button>
+                                    <TextBlock x:Name="SizeUnitText" Text="MB (decimal; 5% safety margin)" VerticalAlignment="Center" />
+                                </StackPanel>
+
+                                <TextBlock Grid.Row="3" Grid.Column="0" Text="Audio" />
+                                <ComboBox x:Name="AudioCombo" Grid.Row="3" Grid.Column="1" SelectedIndex="2">
+                                    <ComboBoxItem Tag="0" Content="No audio" />
+                                    <ComboBoxItem Tag="96" Content="96 kbps" />
+                                    <ComboBoxItem Tag="128" Content="128 kbps" />
+                                    <ComboBoxItem Tag="160" Content="160 kbps" />
+                                    <ComboBoxItem Tag="192" Content="192 kbps" />
+                                </ComboBox>
+                                <StackPanel Grid.Row="3" Grid.Column="2" Grid.ColumnSpan="3" Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="Maximum width" VerticalAlignment="Center" />
+                                    <ComboBox x:Name="WidthCombo" SelectedIndex="0"
+                                              h:Tip.Title="Maximum width"
+                                              h:Tip.Text="Shrink wider videos to this width; smaller videos are never enlarged. 1920 pixels suits a 4K capture. The Cropping tab's output size replaces this while cropping is on.">
+                                        <ComboBoxItem Tag="1920" Content="1080p / 1920 px" />
+                                        <ComboBoxItem Tag="1280" Content="720p / 1280 px" />
+                                        <ComboBoxItem Tag="0" Content="Keep original" />
+                                    </ComboBox>
+                                </StackPanel>
+
+                                <CheckBox x:Name="AudioFadeCheck" Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" IsEnabled="False"
+                                          Content="Fade audio in and out (0.5 seconds)" />
+                                <CheckBox x:Name="VideoFadeCheck" Grid.Row="4" Grid.Column="2" Grid.ColumnSpan="3"
+                                          Content="Fade video from/to black (0.5 seconds)" />
+
+                                <TextBlock x:Name="BitrateText" Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="5"
+                                           TextWrapping="Wrap" Margin="0" />
+                            </Grid>
+                        </StackPanel>
+                    </StackPanel>
+                </TabItem>
+
+                <TabItem Header="Cropping">
+                    <StackPanel Spacing="8">
+                        <CheckBox x:Name="CropCheck" IsEnabled="False"
+                                  Content="Crop and resize the video (for small web thumbnails)" />
+                        <TextBlock Classes="dim" TextWrapping="Wrap"
+                                   Text="Drag on the video preview to select the area to keep, then adjust the numbers below for a precise rectangle. Drag the center handle to move the rectangle without resizing it." />
+
+                        <StackPanel x:Name="CropBody" Spacing="16" IsEnabled="False">
+                            <StackPanel>
+                                <TextBlock Classes="groupTitle" Text="Selected rectangle (source pixels)" />
+                                <Grid Classes="form" ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,*" RowDefinitions="Auto,Auto">
+                                    <TextBlock Grid.Column="0" Text="Left" />
+                                    <NumericUpDown x:Name="CropLeftSpin" Grid.Column="1" Classes="pixels"
+                                                   Minimum="0" Maximum="1" Increment="2" FormatString="0" Value="0" />
+                                    <TextBlock Grid.Column="2" Text="Top" />
+                                    <NumericUpDown x:Name="CropTopSpin" Grid.Column="3" Classes="pixels"
+                                                   Minimum="0" Maximum="1" Increment="2" FormatString="0" Value="0" />
+                                    <TextBlock Grid.Column="4" Text="Width" />
+                                    <NumericUpDown x:Name="CropWidthSpin" Grid.Column="5" Classes="pixels"
+                                                   Minimum="0" Maximum="1" Increment="2" FormatString="0" Value="0" />
+                                    <TextBlock Grid.Column="6" Text="Height" />
+                                    <NumericUpDown x:Name="CropHeightSpin" Grid.Column="7" Classes="pixels"
+                                                   Minimum="0" Maximum="1" Increment="2" FormatString="0" Value="0" />
+                                    <Button Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="4" HorizontalAlignment="Left"
+                                            Click="ResetCrop_Click" Margin="0"
+                                            h:Tip.Title="Whole frame" h:Tip.Text="Set the rectangle back to the full picture.">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <TextBlock Classes="icon" Text="&#xF0293;" />
+                                            <TextBlock Classes="label" Text="Select the whole frame" />
+                                        </StackPanel>
+                                    </Button>
+                                </Grid>
+                            </StackPanel>
+
+                            <StackPanel>
+                                <TextBlock Classes="groupTitle" Text="Output size" />
+                                <Grid Classes="form" ColumnDefinitions="Auto,Auto,Auto,Auto,*" RowDefinitions="Auto,Auto">
+                                    <TextBlock Grid.Column="0" Text="Width" />
+                                    <NumericUpDown x:Name="OutputWidthSpin" Grid.Column="1" Classes="pixels"
+                                                   Minimum="16" Maximum="3840" Increment="2" FormatString="0" Value="320" />
+                                    <TextBlock Grid.Column="2" Text="Height" />
+                                    <NumericUpDown x:Name="OutputHeightSpin" Grid.Column="3" Classes="pixels"
+                                                   Minimum="16" Maximum="3840" Increment="2" FormatString="0" Value="180" />
+                                    <TextBlock Grid.Column="4" Grid.RowSpan="2" Classes="dim" TextWrapping="Wrap" Margin="8,0,0,8"
+                                               Text="The rectangle's aspect ratio is kept, so each side follows the other. This size replaces the maximum width on the Main tab." />
+                                    <TextBlock x:Name="CropSummary" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="4"
+                                               TextWrapping="Wrap" Margin="0" />
+                                </Grid>
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+                </TabItem>
+            </TabControl>
+
+            <!-- Encode -->
+            <DockPanel Grid.Row="6" Margin="0,8,0,8">
+                <Button x:Name="EncodeButton" DockPanel.Dock="Left" Classes="accent" IsEnabled="False" Click="Encode_Click"
+                        h:Tip.Title="Create" h:Tip.Text="Encode the selected part of the video with these settings. The original is never changed.">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock Classes="icon" Text="&#xF0207;" />
+                        <TextBlock x:Name="EncodeLabel" Classes="label" Text="Create web MP4" />
+                    </StackPanel>
+                </Button>
+                <Button x:Name="CancelButton" DockPanel.Dock="Left" Margin="8,0,0,0" IsEnabled="False" Click="Cancel_Click"
+                        h:Tip.Title="Cancel" h:Tip.Text="Stop encoding.">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock Classes="icon" Text="&#xF0159;" />
+                        <TextBlock Classes="label" Text="Cancel" />
+                    </StackPanel>
+                </Button>
+                <Grid Margin="8,0,0,0" Height="25">
+                    <ProgressBar x:Name="EncodeProgress" Minimum="0" Maximum="1" Height="25" />
+                    <TextBlock x:Name="ProgressText" Text="Ready" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Grid>
+            </DockPanel>
+
+            <Expander Grid.Row="7" Header="Encoding details" HorizontalAlignment="Stretch">
+                <TextBox x:Name="LogBox" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"
+                         Height="120" />
+            </Expander>
+        </Grid>
+    </ScrollViewer>
+</Window>
