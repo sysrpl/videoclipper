@@ -1,6 +1,6 @@
 # Video Clipper
 
-A free video trimmer that turns long recordings, such as MKV captures from a capture card, into short, high-quality clips: MP4 for streaming on the web, or OGV for the Godot engine. FFmpeg does the decoding and encoding.
+A free video trimmer that turns long recordings, such as MKV captures from a capture card, into short, high quality clips: MP4 for streaming on the web, or OGV for the Godot engine. FFmpeg does the decoding and encoding.
 
 Built with .NET 8 and [Avalonia](https://avaloniaui.net/), so it runs on Linux, Windows and macOS.
 
@@ -8,17 +8,17 @@ Built with .NET 8 and [Avalonia](https://avaloniaui.net/), so it runs on Linux, 
 
 ## Features
 
-- **Preview**: the video is shown frame by frame, decoded by FFmpeg. Play it (without sound), click or drag along the timeline, or click the preview and press Left / Right to move exactly one frame. Drag the bar under the preview to make it taller or shorter.
-- **Timeline**: color-coded IN, OUT and NOW markers. Drag either end of the blue bar below it to zoom in, and drag its middle to scroll.
-- **Trimming**: set the start and end in seconds, or to the frame on screen, and jump back to either.
-- **Two output formats**:
-  - **MP4**: two-pass H.264 (preset `slow`) with AAC audio, aimed at a size limit, with the index at the start of the file so browsers can play and seek before it has all downloaded.
-  - **OGV**: Theora video with Vorbis audio at a constant quality, the only video format the Godot engine plays.
-- **Size limit**: the video bitrate is worked out from the clip's length and the limit, with a 5% safety margin. **Suggest** fills in a limit that gives good quality for the clip's length, frame rate and output size.
-- **Cropping and resizing**: draw a rectangle on the preview (or type it in), and shrink the result to a chosen size, for small thumbnails on a web page.
-- **Fades**: 0.5-second audio fades, and 0.5-second video fades from and to black.
-- **Remembers** the format, size limit, audio, crop rectangle and output size between sessions.
-- **Look and feel**: a dark theme modelled on Linux Mint (Mint-Y-Dark), the Ubuntu font, and Material Design icons.
+* **Preview**: the video is shown frame by frame, decoded by FFmpeg. Play it (without sound), click or drag along the timeline, or click the preview and press Left / Right to move exactly one frame. Drag the bar under the preview to make it taller or shorter.
+* **Timeline**: color coded IN, OUT and NOW markers. Drag either end of the blue bar below it to zoom in, and drag its middle to scroll.
+* **Trimming**: set the start and end in seconds, or to the frame on screen, and jump back to either.
+* **Two output formats**:
+  * **MP4**: two pass H.264 (preset `slow`) with AAC audio, aimed at a size limit, with the index at the start of the file so browsers can play and seek before it has all downloaded.
+  * **OGV**: Theora video with Vorbis audio at a constant quality, the only video format the Godot engine plays.
+* **Size limit**: the video bitrate is worked out from the clip's length and the limit, with a 5% safety margin. **Suggest** fills in a limit that gives good quality for the clip's length, frame rate and output size.
+* **Cropping and resizing**: draw a rectangle on the preview (or type it in), and shrink the result to a chosen size, for small thumbnails on a web page.
+* **Fades**: 0.5 second audio fades, and 0.5 second video fades from and to black.
+* **Remembers** the format, size limit, audio, crop rectangle and output size between sessions.
+* **Look and feel**: a dark theme modelled on Linux Mint (Mint-Y-Dark), the Ubuntu font, and Material Design icons.
 
 ## Output formats
 
@@ -33,8 +33,8 @@ Theora encodes to a quality rather than a bitrate, so an OGV clip has no predict
 
 ## Requirements
 
-- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) (8.0.100 or later)
-- [FFmpeg](https://ffmpeg.org/), with `ffmpeg` and `ffprobe` on the PATH. OGV output needs an FFmpeg built with libtheora and libvorbis, as the usual packages are.
+* [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) (8.0.100 or later)
+* [FFmpeg](https://ffmpeg.org/), with `ffmpeg` and `ffprobe` on the PATH. OGV output needs an FFmpeg built with libtheora and libvorbis, as the usual packages are.
 
 NuGet packages (Avalonia) are downloaded automatically on the first build.
 
@@ -73,9 +73,9 @@ dotnet build
 dotnet run
 ```
 
-### Stand-alone builds
+### Standalone builds
 
-To make a self-contained program that runs without .NET installed, publish for the target platform (`-r` is the [runtime identifier](https://learn.microsoft.com/dotnet/core/rid-catalog)). FFmpeg is still needed.
+To make a self contained program that runs without .NET installed, publish for the target platform (`-r` is the [runtime identifier](https://learn.microsoft.com/dotnet/core/rid-catalog)). FFmpeg is still needed.
 
 ```sh
 # Linux (x64)
@@ -101,7 +101,7 @@ Run `videoclipper` (or `videoclipper.exe` on Windows) from the output folder. Th
 
 ## How to use it
 
-1. Select **Open video…** (or press Ctrl+O) and choose the recording.
+1. Select **Open video...** (or press Ctrl+O) and choose the recording.
 2. Find the part you want with **Play**, or by clicking and dragging along the timeline. For an exact frame, click the preview and tap Left or Right; hold the key to keep moving.
 3. Select **Set to current position** beside Start and End, or type the times in seconds. **Jump to start** and **Jump to end** go back to them.
 4. On the **Main** tab, choose where to save the clip and its **Format**. Changing the format changes the file name's extension for you.
@@ -122,14 +122,14 @@ While cropping is on, the output size replaces the Maximum width on the Main tab
 
 ## Notes
 
-- Crop and output sizes are rounded to even numbers of pixels, which H.264's yuv420p format needs. The rectangle is only ever rounded inward, so it never grows past what was selected.
-- Cropped clips are encoded with square pixels, so a browser shows a thumbnail at exactly the size asked for.
-- The size limit goes down to 0.1 MB, for very small thumbnails. If the limit is too small for the clip's length, the window says so instead of encoding. Small outputs, such as 320×180, are allowed lower bitrates than full-size video.
-- The size limit is in decimal megabytes (1 MB = 1,000,000 bytes). The estimate allows for the safety margin, but unusually complex footage can still come out a little different.
-- A maximum width of 1920 pixels is a good choice for a 4K capture: the bitrate goes into a cleaner 1080p picture instead of a heavily compressed 4K one. 1280 pixels can look better for very detailed clips.
-- The original recording is never changed, and the clip must be saved under a different name.
-- Seeking in a browser before the whole MP4 has downloaded also needs the web server to support byte-range requests, which most do.
-- The `slow` preset and two passes favor quality and size over speed, so encoding takes a while.
+* Crop and output sizes are rounded to even numbers of pixels, which H.264's yuv420p format needs. The rectangle is only ever rounded inward, so it never grows past what was selected.
+* Cropped clips are encoded with square pixels, so a browser shows a thumbnail at exactly the size asked for.
+* The size limit goes down to 0.1 MB, for very small thumbnails. If the limit is too small for the clip's length, the window says so instead of encoding. Small outputs, such as 320x180, are allowed lower bitrates than full size video.
+* The size limit is in decimal megabytes (1 MB = 1,000,000 bytes). The estimate allows for the safety margin, but unusually complex footage can still come out a little different.
+* A maximum width of 1920 pixels is a good choice for a 4K capture: the bitrate goes into a cleaner 1080p picture instead of a heavily compressed 4K one. 1280 pixels can look better for very detailed clips.
+* The original recording is never changed, and the clip must be saved under a different name.
+* Seeking in a browser before the whole MP4 has downloaded also needs the web server to support byte range requests, which most do.
+* The `slow` preset and two passes favor quality and size over speed, so encoding takes a while.
 
 ## Where things are stored
 
@@ -163,11 +163,11 @@ images/                 screenshots for this README
 
 ## Credits
 
-- [Avalonia UI](https://avaloniaui.net/) (MIT)
-- [FFmpeg](https://ffmpeg.org/) (LGPL / GPL), run as a separate program
-- [Material Design Icons](https://pictogrammers.com/library/mdi/) (Apache 2.0)
-- [Ubuntu font family](https://design.ubuntu.com/font) (Ubuntu Font Licence 1.0)
-- App icon from the [Mint-Y icon theme](https://github.com/linuxmint/mint-y-icons) (GPL 3.0)
+* [Avalonia UI](https://avaloniaui.net/) (MIT)
+* [FFmpeg](https://ffmpeg.org/) (LGPL / GPL), run as a separate program
+* [Material Design Icons](https://pictogrammers.com/library/mdi/) (Apache 2.0)
+* [Ubuntu font family](https://design.ubuntu.com/font) (Ubuntu Font Licence 1.0)
+* App icon from the [Mint-Y icon theme](https://github.com/linuxmint/mint-y-icons) (GPL 3.0)
 
 ## License
 
